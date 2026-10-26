@@ -530,9 +530,8 @@ pub fn extract_dng<S: StreamInterface + ?Sized>(
 ) -> Result<(), PiexError> {
     const DNG_THUMBNAIL_MAX_DIMENSION: u32 = 512;
 
-    const DNG_TAGS: [u32; 7] = [
+    const DNG_TAGS: [u32; 6] = [
         EXIF_TAG_DEFAULT_CROP_SIZE,
-        TIFF_TAG_SUB_FILE_TYPE,
         TIFF_TAG_IMAGE_WIDTH,
         TIFF_TAG_IMAGE_LENGTH,
         TIFF_TAG_STRIP_BYTE_COUNTS,

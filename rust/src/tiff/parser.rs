@@ -641,11 +641,13 @@ impl<'a, S: StreamInterface + ?Sized> TiffParser<'a, S> {
             && dir.get_u32(TIFF_TAG_SUB_FILE_TYPE).map(|v| v != 0).unwrap_or(false);
 
         if !is_secondary {
-            if let Ok((fw, fh)) = self.get_full_dimension32(dir) {
-                if fw > preview_data.full_width && fh > preview_data.full_height {
+            match self.get_full_dimension32(dir) {
+                Ok((fw, fh)) => {
                     preview_data.full_width = fw;
                     preview_data.full_height = fh;
                 }
+                Err(TiffError::TagNotFound { .. }) => {}
+                Err(_) => success = false,
             }
         }
 
