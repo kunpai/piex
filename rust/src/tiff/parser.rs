@@ -657,7 +657,10 @@ impl<'a, S: StreamInterface + ?Sized> TiffParser<'a, S> {
                     } else {
                         None
                     };
-                    if let Some(Ok(fw)) = width_tag.map(|tag| dir.get_u32(tag)) {
+                    let width = width_tag
+                        .filter(|&tag| dir.get_offset_and_length(tag, TiffType::Ifd).is_err())
+                        .map(|tag| dir.get_u32(tag));
+                    if let Some(Ok(fw)) = width {
                         preview_data.full_width = fw;
                     }
                     success = false;
