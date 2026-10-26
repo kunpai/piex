@@ -324,9 +324,10 @@ fn rust_recognize_raw_image_type_lite(data: &[u8]) -> u32 {
 }
 
 fn rust_is_raw_type(raw_type: u32) -> bool {
-    catch_unwind(AssertUnwindSafe(
-        || matches!(RawImageType::from_u32(raw_type), Some(t) if t != RawImageType::NonRaw),
-    ))
+    catch_unwind(AssertUnwindSafe(|| match RawImageType::from_u32(raw_type) {
+        Some(t) => t != RawImageType::NonRaw,
+        None => std::process::abort(),
+    }))
     .unwrap_or(false)
 }
 
