@@ -203,6 +203,37 @@ impl StreamInterface for CxxStreamAdapter<'_> {
     }
 }
 
+const CXX_RAW_IMAGE_TYPES: [RawImageType; 20] = [
+    RawImageType::NonRaw,
+    RawImageType::Arw,
+    RawImageType::Cr2,
+    RawImageType::Cr3,
+    RawImageType::Crw,
+    RawImageType::Dcr,
+    RawImageType::Dng,
+    RawImageType::Kdc,
+    RawImageType::Mos,
+    RawImageType::Mrw,
+    RawImageType::Nef,
+    RawImageType::Nrw,
+    RawImageType::Orf,
+    RawImageType::Pef,
+    RawImageType::Qtk,
+    RawImageType::Raf,
+    RawImageType::RawContaxN,
+    RawImageType::Rw2,
+    RawImageType::Srw,
+    RawImageType::X3f,
+];
+
+fn from_cxx(raw_type: u32) -> Option<RawImageType> {
+    CXX_RAW_IMAGE_TYPES.get(raw_type as usize).copied()
+}
+
+fn to_cxx(raw_type: RawImageType) -> u32 {
+    CXX_RAW_IMAGE_TYPES.iter().position(|&t| t == raw_type).unwrap_or(0) as u32
+}
+
 /// Copies `bytes` into a new `Vec<u8>` with a single memcpy. The C++ bridge
 /// uses this because `rust::Vec` has no public way to set its length.
 fn rust_bytes_to_vec(bytes: &[u8]) -> Vec<u8> {
@@ -223,7 +254,7 @@ fn rust_is_raw(stream: Pin<&mut ffi::StreamInterface>) -> bool {
         if adapter.get_data(0, &mut header[..to_read]).is_err() {
             return false;
         }
-        format_recognizer::recognize_raw_image_type_lite(&header[..to_read]) != RawImageType::NonRaw
+        to_cxx(format_recognizer::recognize_raw_image_type_lite(&header[..to_read])) != 0
     }))
     .unwrap_or(false)
 }
@@ -242,10 +273,10 @@ fn rust_get_preview_image_data(
             return 1;
         }
         let recognized = format_recognizer::recognize_raw_image_type_lite(&header[..to_read]);
-        *out_type = recognized as u32;
+        *out_type = to_cxx(recognized);
         match extractor::get_preview_image_data_into(&adapter, out_data) {
             Ok(raw_type) => {
-                *out_type = raw_type as u32;
+                *out_type = to_cxx(raw_type);
                 0
             }
             Err(PiexError::UnsupportedFormat) => 2,
@@ -319,20 +350,22 @@ fn rust_is_raw_lite(data: &[u8]) -> bool {
 }
 
 fn rust_recognize_raw_image_type_lite(data: &[u8]) -> u32 {
-    catch_unwind(AssertUnwindSafe(|| format_recognizer::recognize_raw_image_type_lite(data) as u32))
-        .unwrap_or(0)
+    catch_unwind(AssertUnwindSafe(|| {
+        to_cxx(format_recognizer::recognize_raw_image_type_lite(data))
+    }))
+    .unwrap_or(0)
 }
 
 fn rust_is_raw_type(raw_type: u32) -> bool {
     catch_unwind(AssertUnwindSafe(
-        || matches!(RawImageType::from_u32(raw_type), Some(t) if t != RawImageType::NonRaw),
+        || matches!(from_cxx(raw_type), Some(t) if t != RawImageType::NonRaw),
     ))
     .unwrap_or(false)
 }
 
 fn rust_is_of_type(data: &[u8], raw_type: u32) -> bool {
     catch_unwind(AssertUnwindSafe(|| {
-        RawImageType::from_u32(raw_type).is_some_and(|t| format_recognizer::is_of_type(data, t))
+        from_cxx(raw_type).is_some_and(|t| format_recognizer::is_of_type(data, t))
     }))
     .unwrap_or(false)
 }
@@ -344,8 +377,7 @@ fn rust_get_number_of_bytes_for_is_raw_lite() -> usize {
 
 fn rust_get_number_of_bytes_for_is_of_type(raw_type: u32) -> usize {
     catch_unwind(AssertUnwindSafe(|| {
-        RawImageType::from_u32(raw_type)
-            .map_or(0, format_recognizer::get_number_of_bytes_for_is_of_type)
+        from_cxx(raw_type).map_or(0, format_recognizer::get_number_of_bytes_for_is_of_type)
     }))
     .unwrap_or(0)
 }
