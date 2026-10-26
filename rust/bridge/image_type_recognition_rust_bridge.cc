@@ -4,6 +4,7 @@
 // wrapping pure Rust implementation via CXX bridge.
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -36,11 +37,14 @@ bool IsOfType(const RangeCheckedBytePtr& source, const RawImageTypes type) {
   if (len == 0 && req > 0) {
     return false;
   }
-  const std::vector<uint8_t> buf = source.extractBytes(0, len);
-  if (buf.size() != len) {
+  std::array<uint8_t, 10000> buf;
+  if (len > buf.size()) {
     return false;
   }
-  const rust::Slice<const uint8_t> slice(buf.data(), buf.size());
+  for (size_t i = 0; i < len; ++i) {
+    buf[i] = source[i];
+  }
+  const rust::Slice<const uint8_t> slice(buf.data(), len);
   return bridge::rust_is_of_type(slice, static_cast<uint32_t>(type));
 }
 
@@ -53,11 +57,14 @@ RawImageTypes RecognizeRawImageTypeLite(const RangeCheckedBytePtr& source) {
   if (len == 0) {
     return kNonRawImage;
   }
-  const std::vector<uint8_t> buf = source.extractBytes(0, len);
-  if (buf.size() != len) {
+  std::array<uint8_t, 10000> buf;
+  if (len > buf.size()) {
     return kNonRawImage;
   }
-  const rust::Slice<const uint8_t> slice(buf.data(), buf.size());
+  for (size_t i = 0; i < len; ++i) {
+    buf[i] = source[i];
+  }
+  const rust::Slice<const uint8_t> slice(buf.data(), len);
   const uint32_t type_val = bridge::rust_recognize_raw_image_type_lite(slice);
   return static_cast<RawImageTypes>(type_val);
 }
