@@ -647,7 +647,21 @@ impl<'a, S: StreamInterface + ?Sized> TiffParser<'a, S> {
                     preview_data.full_height = fh;
                 }
                 Err(TiffError::TagNotFound { .. }) => {}
-                Err(_) => success = false,
+                Err(_) => {
+                    let width_tag = if dir.has(EXIF_TAG_DEFAULT_CROP_SIZE) {
+                        None
+                    } else if dir.has(EXIF_TAG_WIDTH) && dir.has(EXIF_TAG_HEIGHT) {
+                        Some(EXIF_TAG_WIDTH)
+                    } else if dir.has(TIFF_TAG_IMAGE_WIDTH) && dir.has(TIFF_TAG_IMAGE_LENGTH) {
+                        Some(TIFF_TAG_IMAGE_WIDTH)
+                    } else {
+                        None
+                    };
+                    if let Some(Ok(fw)) = width_tag.map(|tag| dir.get_u32(tag)) {
+                        preview_data.full_width = fw;
+                    }
+                    success = false;
+                }
             }
         }
 
